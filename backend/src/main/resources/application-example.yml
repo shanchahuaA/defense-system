@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: defense-management
+
+  datasource:
+    # 数据库地址/库名。默认按本机 MySQL 的 defense_management 库。
+    url: ${DB_URL:jdbc:mysql://localhost:3306/defense_management?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    # 默认空口令：本机 MySQL 没有口令时可以不配直接跑。
+    # 注意别把它整个漏掉——Spring 对 @ConfigurationProperties 里解析不了的占位符
+    # 不报错，而是把 "${DB_PASSWORD}" 这串字面量当口令发出去，报错会是
+    # "Access denied ... (using password: YES)"，看起来像口令填错了。
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQLDialect
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+server:
+  port: 8080
+
+# 文件上传配置
+# path 相对 JVM 的工作目录解析（用 mvn spring-boot:run 从 backend/ 启动时即 backend/uploads），
+# 需要固定位置时用环境变量覆盖成绝对路径。
+file:
+  upload:
+    path: ${user.dir}/uploads
+    signature-path: ${file.upload.path}/signatures
+    template-path: ${file.upload.path}/templates
+
+# JWT配置
+# secret 必须至少 32 个字符（HS256 的密钥长度下限，见 JwtUtils#getSigningKey）
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: 86400000
+
+# 通义千问API配置（默认，可在数据库中配置）
+ai:
+  qwen:
+    base-url: https://dashscope.aliyuncs.com/api/v1
