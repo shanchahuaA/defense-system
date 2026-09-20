@@ -1,6 +1,7 @@
 -- ============================================
 -- 福建农林大学答辩管理系统 - 数据库初始化脚本
 -- ============================================
+SET NAMES utf8mb4;
 -- 创建数据库
 CREATE DATABASE IF NOT EXISTS defense_management DEFAULT CHARACTER SET utf8mb4 DEFAULT COLLATE utf8mb4_unicode_ci;
 USE defense_management;
