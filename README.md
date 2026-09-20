@@ -111,13 +111,9 @@ mysql -u root -p --default-character-set=utf8mb4 < docs/design/test_data.sql    
 mysql -u root -p --default-character-set=utf8mb4 < docs/design/test_scoring_data.sql  # 答辩分组与小组评分
 ```
 
-**`--default-character-set=utf8mb4` 不要省。** 中文 Windows 上，`mysql` 客户端默认把这条连接的 `character_set_client` 设成控制台代码页 `gbk`（`SHOW VARIABLES LIKE 'character_set_client'` 一看便知），服务端就按 GBK 去解释脚本里的字节，而这三份脚本是 UTF-8 文件，于是建库在建评分指标那一步就中断：
+**`--default-character-set=utf8mb4` 不要省。** 中文 Windows 上，`mysql` 客户端默认把这条连接的 `character_set_client` 设成控制台代码页 `gbk`（`SHOW VARIABLES LIKE 'character_set_client'` 一看便知），服务端就按 GBK 去解释脚本里的字节，而这三份脚本是 UTF-8 文件。两处保险都没加时，建库会在建评分指标那一步中断，报的是 `ERROR 1406 (22001) Data too long for column 'item_name'`：`答辩的自述报告` 在 UTF-8 下是 21 字节（奇数），GBK 按 2 字节配对时会把收尾的单引号 `'` 当成半个字吞掉，字符串一路吃下去，就超过了 `item_name` 的 `VARCHAR(100)`。
 
-```
-ERROR 1406 (22001) at line 147: Data too long for column 'item_name' at row 2
-```
-
-`答辩的自述报告` 在 UTF-8 下是 21 字节（奇数），GBK 按 2 字节配对时会把收尾的单引号 `'` 当成半个字吞掉，字符串一路吃下去，就超过了 `item_name` 的 `VARCHAR(100)`。三份脚本的文件头各自写了 `SET NAMES utf8mb4;`，所以绕过 README 直接 `mysql < docs/design/init.sql` 也不会踩；命令行上再带一次参数是让它一连接就摆正，两条路都不依赖默认值。
+三份脚本的文件头各自写了 `SET NAMES utf8mb4;`，所以绕过 README 直接 `mysql < docs/design/init.sql` 也不会踩；命令行上再带一次参数是让它一连接就摆正，两条路都不依赖默认值。
 
 库名固定为 `defense_management`，如果改了库名，记得同步改连接串。
 
