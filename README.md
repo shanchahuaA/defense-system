@@ -255,6 +255,10 @@ exec python privacy_scan.py
     `file.upload.path` 只被 `FileUploadConfig` 用来创建目录、以及把 `/uploads/**` 映射到它；真正写签名的两处（`UserService.uploadSignature`、`DepartmentService`）用的是 `Paths.get(System.getProperty("user.dir"), "uploads", "signatures")`，既不看 `file.upload.signature-path`，也不看 `file.upload.path`。于是照 `application-example.yml` 里那句「需要固定位置时用环境变量覆盖成绝对路径」做完，签名仍会写到 JVM 工作目录下，而 `/uploads/**` 已经指向别处——传上去的签名就取不到了。模板路径（`DocumentTemplateService` 读 `file.upload.template-path`）没有这个问题。
     *后续计划：把签名路径也改成读配置，或干脆去掉那两个配置项、只保留写死的约定，别让两边对不上。*
 
+11. **同一条错误提示会在界面上弹两遍。**
+    `utils/request.js` 的响应拦截器对 `code !== 200` 先弹一次 `ElMessage.error(res.message)`，随后调用处的 `catch` 又弹一次 `ElMessage.error(error.message)`——两条内容相同，叠在一起出现。这是所有 `code !== 200` 的错误路径共有的（建院系、删院系、上传签名……都一样），不是某一处漏改。
+    *后续计划：只留一边——拦截器负责 reject、提示交给调用处，或反过来。*
+
 ### 后续计划
 
 - 接上文档导出（问题 1、2），这是功能上最大的缺口
@@ -263,6 +267,7 @@ exec python privacy_scan.py
 - 单进程部署包装（问题 7）
 - 上传接口补服务端校验（问题 9）
 - 统一上传目录的配置来源（问题 10）
+- 错误提示只留一处，别弹两遍（问题 11）
 
 ## 许可证
 
