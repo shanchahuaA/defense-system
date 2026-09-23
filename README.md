@@ -156,7 +156,7 @@ $env:DB_URL = "jdbc:mysql://localhost:3306/defense_management"
 | `DB_URL` | 否 | 本机 `defense_management` 库 | 完整 JDBC 连接串 |
 | `DB_USERNAME` | 否 | `root` | |
 
-上传目录有两个来源，别把它们当成一个：`file.upload.path`（默认 `${user.dir}/uploads`，相对 JVM 工作目录解析，从 `backend/` 启动时就是 `backend/uploads/`）只决定 `/uploads/**` 静态映射的根目录、以及启动时创建哪几个目录；而**手写签名实际写入的位置是写死的** `<JVM 工作目录>/uploads/signatures`（见「已知问题」第 11 条）。文档模板路径走 `file.upload.template-path`，这个是真读配置的。
+上传目录有两个来源，别把它们当成一个：`file.upload.path`（默认 `${user.dir}/uploads`，相对 JVM 工作目录解析，从 `backend/` 启动时就是 `backend/uploads/`）只决定 `/uploads/**` 静态映射的根目录、以及启动时创建哪几个目录；而**手写签名实际写入的位置是写死的** `<JVM 工作目录>/uploads/signatures`（见「已知问题」第 10 条）。文档模板路径走 `file.upload.template-path`，这个是真读配置的。
 
 ## 启动步骤
 
@@ -222,52 +222,47 @@ exec python privacy_scan.py
    `frontend/src/views/teacher/Documents.vue` 里，行内的「导出文档」下拉只弹一句提示、不产生文件（`handleExport` 里是 `TODO: 调用后端导出接口`）；工具栏的「批量导出」按钮被 `v-if="false"` 直接隐藏了。后端其实已经有 `DocumentGenerationService`（用 poi-tl 渲染模板）和 `TemplateDownloadController`，只是没接上。
    *后续计划：把这两个按钮接上已有的生成服务；接不上就先把它们从界面上摘掉，不要让演示时按下去没反应。*
 
-2. **删除院系时没有关联数据校验，会连带删掉该院系下的所有学生与答辩小组。**
-   `DepartmentService.delete()` 里只有一行 `// TODO: 检查是否有关联数据（教师、学生）` 就直接删了。而外键有三条：`student.department_id` 是 `ON DELETE CASCADE`、`defense_group.department_id` 也是 `ON DELETE CASCADE`、`sys_user.department_id` 是 `ON DELETE SET NULL`——删一个院系会静默级联删除它名下全部学生记录、全部答辩小组及其 `group_teacher` 关联行（教师则变成无院系）；学生没了，挂在他们身上的 `group_score` / `final_score` / `defense_record` 也随 `student_id` 的 CASCADE 一起消失。
-   *后续计划：删除前先统计关联的教师、学生与答辩小组，非空则拒绝并给出提示；或改成软删除。*
-
-3. **三个调试用的文档接口处于「功能暂时停用」状态。**
+2. **三个调试用的文档接口处于「功能暂时停用」状态。**
    `DocumentDownloadController` 与 `TemplateDownloadController` 上的 `@RequestMapping("/api/documents")` 被注释掉了（注释写着"功能暂时停用"），于是 `/test-generate`、`/download-standard-template`、`/debug-generate` 实际挂在根路径上，而不是 `/api/documents/*`。它们本是开发期的手工验证入口，其中 `/debug-generate` 还会写入写死的假数据。
    *后续计划：导出功能接通后一并清理或改回正常映射。*
 
-4. **AI API Key 以明文存在数据库里，并且会原样返回给前端。**
+3. **AI API Key 以明文存在数据库里，并且会原样返回给前端。**
    密钥存在 `ai_config.api_key`（明文列），`GET /api/admin/ai-config` 会把它读回前端显示。接口有 `@PreAuthorize("hasRole('SUPER_ADMIN')")`，只有超管能看，但落库和传输都没有加密。
    *后续计划：加密存储，返回值里脱敏成后四位。*
 
-5. **新建教师与重置密码时的初始口令写死为 `123456`。**
+4. **新建教师与重置密码时的初始口令写死为 `123456`。**
    唯一的值在 `frontend/src/api/user.js` 的 `DEFAULT_INITIAL_CODE`，重置接口的默认参数与新建表单都用它；但界面文案里还散着几处写死的 `123456`（`Teachers.vue` 的输入框提示与重置确认框、`Admins.vue` 的重置确认框、登录页的管理员提示），改默认值时要一起改，否则文案会说谎。演示数据里所有账号也都是这个口令。
    *后续计划：由管理员逐个指定，或强制首次登录后修改。*
 
-6. **测试只有一个，且它需要真实数据库。**
+5. **测试只有一个，且它需要真实数据库。**
    除 `DemoApplicationTests.contextLoads` 之外没有测试代码；这一个也只是把 Spring 上下文拉起来，`ddl-auto: validate` 会去打数据库，所以没有库就跑不过。
    *后续计划：补业务层测试；至少把上下文测试改成用 H2 或 Testcontainers，让它不依赖本机库。*
 
-7. **JWT 签发后无法吊销，有效期 24 小时。**
+6. **JWT 签发后无法吊销，有效期 24 小时。**
    改密码不会让已签发的令牌失效（`TokenBlacklist` 之类都没有），只能等它自己过期。
 
-8. **前端构建产物不由后端托管。**
+7. **前端构建产物不由后端托管。**
    后端没有把 `frontend/dist` 配成静态资源，所以必须前后端两个进程。要单进程部署得先加静态资源映射或把前端打进镜像。
 
-9. **启动时对配置错误的提示是「延迟」的。**
+8. **启动时对配置错误的提示是「延迟」的。**
    `ddl-auto: validate` 不会建表，所以库没建好时报的是 Hibernate 的表不存在错误，而不是一句"请先执行 init.sql"。
 
-10. **上传接口的类型与大小校验只做在前端。**
+9. **上传接口的类型与大小校验只做在前端。**
     签名图「PNG/JPG、不超过 2MB」是 `Signature.vue` 里的前端校验；`UserService.uploadSignature` 只按原文件名取扩展名，不判断类型也不判断大小，服务端唯一的兜底是 multipart 的 10MB 上限。绕过前端直接调接口可以传更大的文件。
     *后续计划：把类型与大小校验补到服务端，不要只靠前端。*
 
-11. **签名图片的落盘位置是写死的，不受配置控制。**
+10. **签名图片的落盘位置是写死的，不受配置控制。**
     `file.upload.path` 只被 `FileUploadConfig` 用来创建目录、以及把 `/uploads/**` 映射到它；真正写签名的两处（`UserService.uploadSignature`、`DepartmentService`）用的是 `Paths.get(System.getProperty("user.dir"), "uploads", "signatures")`，既不看 `file.upload.signature-path`，也不看 `file.upload.path`。于是照 `application-example.yml` 里那句「需要固定位置时用环境变量覆盖成绝对路径」做完，签名仍会写到 JVM 工作目录下，而 `/uploads/**` 已经指向别处——传上去的签名就取不到了。模板路径（`DocumentTemplateService` 读 `file.upload.template-path`）没有这个问题。
     *后续计划：把签名路径也改成读配置，或干脆去掉那两个配置项、只保留写死的约定，别让两边对不上。*
 
 ### 后续计划
 
-- 接上文档导出（问题 1、3），这是功能上最大的缺口
-- 补删除院系的关联校验（问题 2）
-- 把 AI 密钥脱敏与加密（问题 4）
-- 补测试（问题 6），并让上下文测试不依赖本机数据库
-- 单进程部署包装（问题 8）
-- 上传接口补服务端校验（问题 10）
-- 统一上传目录的配置来源（问题 11）
+- 接上文档导出（问题 1、2），这是功能上最大的缺口
+- 把 AI 密钥脱敏与加密（问题 3）
+- 补测试（问题 5），并让上下文测试不依赖本机数据库
+- 单进程部署包装（问题 7）
+- 上传接口补服务端校验（问题 9）
+- 统一上传目录的配置来源（问题 10）
 
 ## 许可证
 

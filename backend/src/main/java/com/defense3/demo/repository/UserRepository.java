@@ -38,6 +38,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     List<User> findByDepartmentIdAndRoleIn(Long departmentId, List<UserRole> roles);
 
+    long countByDepartmentIdAndRole(Long departmentId, UserRole role);
+
     // 查询纯管理员（没有工号的DEPT_ADMIN）
     List<User> findByRoleAndTeacherNoIsNull(UserRole role);
 

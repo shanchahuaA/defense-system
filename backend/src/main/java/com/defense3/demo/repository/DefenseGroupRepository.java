@@ -23,4 +23,6 @@ public interface DefenseGroupRepository extends JpaRepository<DefenseGroup, Long
     boolean existsByLeaderIdAndYearId(Long leaderId, Long yearId);
 
     Optional<DefenseGroup> findByNameAndDepartmentIdAndYearId(String name, Long departmentId, Long yearId);
+
+    long countByDepartmentId(Long departmentId);
 }

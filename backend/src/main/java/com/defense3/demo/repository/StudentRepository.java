@@ -43,6 +43,8 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
         long countByDepartmentIdAndYearId(Long departmentId, Long yearId);
 
+        long countByDepartmentId(Long departmentId);
+
         long countByGroupId(Long groupId);
 
         // 添加缺失的方法

@@ -6,7 +6,9 @@ import com.defense3.demo.entity.Department;
 import com.defense3.demo.entity.User;
 import com.defense3.demo.entity.UserRole;
 import com.defense3.demo.exception.BusinessException;
+import com.defense3.demo.repository.DefenseGroupRepository;
 import com.defense3.demo.repository.DepartmentRepository;
+import com.defense3.demo.repository.StudentRepository;
 import com.defense3.demo.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -31,6 +34,8 @@ public class DepartmentService {
 
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
+    private final StudentRepository studentRepository;
+    private final DefenseGroupRepository defenseGroupRepository;
     private final PasswordEncoder passwordEncoder;
 
     /**
@@ -120,8 +125,32 @@ public class DepartmentService {
         if (!departmentRepository.existsById(id)) {
             throw new BusinessException("院系不存在");
         }
-        // TODO: 检查是否有关联数据（教师、学生）
+
+        List<String> linkedData = describeLinkedData(id);
+        if (!linkedData.isEmpty()) {
+            throw new BusinessException("该院系下还有" + String.join("、", linkedData)
+                    + "，无法删除。请先转移或删除这些关联数据。");
+        }
+
         departmentRepository.deleteById(id);
+    }
+
+    /**
+     * 列出挂在院系下的关联数据，没有则返回空列表。
+     */
+    private List<String> describeLinkedData(Long departmentId) {
+        List<String> parts = new ArrayList<>();
+        addCount(parts, userRepository.countByDepartmentIdAndRole(departmentId, UserRole.TEACHER), "名教师");
+        addCount(parts, userRepository.countByDepartmentIdAndRole(departmentId, UserRole.DEPT_ADMIN), "名院系管理员");
+        addCount(parts, studentRepository.countByDepartmentId(departmentId), "名学生");
+        addCount(parts, defenseGroupRepository.countByDepartmentId(departmentId), "个答辩小组");
+        return parts;
+    }
+
+    private void addCount(List<String> parts, long count, String label) {
+        if (count > 0) {
+            parts.add(count + label);
+        }
     }
 
     /**
